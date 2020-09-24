@@ -40,6 +40,8 @@ MemoryFile::MemoryFile(const MMKVPath_t &path)
     reloadFromFile();
 }
 
+
+//进行扩容
 bool MemoryFile::truncate(size_t size) {
     if (m_fd < 0) {
         return false;
@@ -51,6 +53,7 @@ bool MemoryFile::truncate(size_t size) {
     auto oldSize = m_size;
     m_size = size;
     // round up to (n * pagesize)
+    //计算n*pageSize对应的size信息
     if (m_size < DEFAULT_MMAP_SIZE || (m_size % DEFAULT_MMAP_SIZE != 0)) {
         m_size = ((m_size / DEFAULT_MMAP_SIZE) + 1) * DEFAULT_MMAP_SIZE;
     }
@@ -61,6 +64,7 @@ bool MemoryFile::truncate(size_t size) {
         return false;
     }
     if (m_size > oldSize) {
+        //填充0
         if (!zeroFillFile(m_fd, oldSize, m_size - oldSize)) {
             MMKVError("fail to zeroFile [%ws] to size %zu", m_name.c_str(), m_size);
             m_size = oldSize;
@@ -103,6 +107,7 @@ bool MemoryFile::msync(SyncFlag syncFlag) {
 }
 
 bool MemoryFile::mmap() {
+    //申请一段内存地址。
     m_fileMapping = CreateFileMapping(m_fd, nullptr, PAGE_READWRITE, 0, 0, nullptr);
     if (!m_fileMapping) {
         MMKVError("fail to CreateFileMapping [%ws], %d", m_name.c_str(), GetLastError());
@@ -118,6 +123,7 @@ bool MemoryFile::mmap() {
     return true;
 }
 
+//按照普通的内存文件映射到内存
 void MemoryFile::reloadFromFile() {
     if (isFileValid()) {
         MMKVWarning("calling reloadFromFile while the cache [%ws] is still valid", m_name.c_str());
@@ -128,19 +134,21 @@ void MemoryFile::reloadFromFile() {
     m_fd =
         CreateFile(m_name.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
                    nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (m_fd == INVALID_HANDLE_VALUE) {
+    if (m_fd == INVALID_HANDLE_VALUE) {//文件不存在
         MMKVError("fail to open:%ws, %d", m_name.c_str(), GetLastError());
     } else {
         FileLock fileLock(m_fd);
         InterProcessLock lock(&fileLock, ExclusiveLockType);
         SCOPED_LOCK(&lock);
-
+        //获取文件大小
         mmkv::getFileSize(m_fd, m_size);
         // round up to (n * pagesize)
         if (m_size < DEFAULT_MMAP_SIZE || (m_size % DEFAULT_MMAP_SIZE != 0)) {
+            //如果文件大小不是4k或者4k的整数倍，则进行扩容
             size_t roundSize = ((m_size / DEFAULT_MMAP_SIZE) + 1) * DEFAULT_MMAP_SIZE;
             truncate(roundSize);
         } else {
+            //申请内存
             auto ret = mmap();
             if (!ret) {
                 doCleanMemoryCache(true);

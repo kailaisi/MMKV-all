@@ -839,7 +839,7 @@ public class MMKV implements SharedPreferences, SharedPreferences.Editor {
     }
 
     private static native void jniInitialize(String rootDir, int level);
-
+    //加密密钥，是否相对路径。
     private native static long getMMKVWithID(String mmapID, int mode, String cryptKey, String rootPath);
 
     private native static long getMMKVWithIDAndSize(String mmapID, int size, int mode, String cryptKey);

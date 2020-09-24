@@ -201,13 +201,16 @@ bool isFileExist(const string &nsFilePath) {
     return lstat(nsFilePath.c_str(), &temp) == 0;
 }
 
+//创建文件夹
 extern bool mkPath(const MMKVPath_t &str) {
+    //路径
     char *path = strdup(str.c_str());
 
     struct stat sb = {};
     bool done = false;
     char *slash = path;
 
+    //逐级判断对应的路径文件夹是否存在。
     while (!done) {
         slash += strspn(slash, "/");
         slash += strcspn(slash, "/");
@@ -226,7 +229,7 @@ extern bool mkPath(const MMKVPath_t &str) {
             free(path);
             return false;
         }
-
+		//这里会修改路径，所以在进行path创建的时候，需要进行一个备份
         *slash = '/';
     }
     free(path);

@@ -118,8 +118,10 @@ MMKV_JNI void jniInitialize(JNIEnv *env, jobject obj, jstring rootDir, jint logL
     if (!rootDir) {
         return;
     }
+    //
     const char *kstr = env->GetStringUTFChars(rootDir, nullptr);
     if (kstr) {
+        //调用initializeMMKV方法
         MMKV::initializeMMKV(kstr, (MMKVLogLevel) logLevel);
         env->ReleaseStringUTFChars(rootDir, kstr);
     }
@@ -238,7 +240,7 @@ MMKV_JNI jlong getMMKVWithID(JNIEnv *env, jobject, jstring mmapID, jint mode, js
     string str = jstring2string(env, mmapID);
 
     bool done = false;
-    if (cryptKey) {
+    if (cryptKey) {//加密的key值。如果不传，则不进行加密
         string crypt = jstring2string(env, cryptKey);
         if (crypt.length() > 0) {
             if (rootPath) {

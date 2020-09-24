@@ -70,7 +70,9 @@ MMKV_NAMESPACE_BEGIN
 
 #ifndef MMKV_ANDROID
 MMKV::MMKV(const std::string &mmapID, MMKVMode mode, string *cryptKey, MMKVPath_t *rootPath)
+    //id
     : m_mmapID(mmapID)
+    //缓存路径，
     , m_path(mappedKVPathWithID(m_mmapID, mode, rootPath))
     , m_crcPath(crcPathWithID(m_mmapID, mode, rootPath))
     , m_dic(nullptr)
@@ -110,6 +112,7 @@ MMKV::MMKV(const std::string &mmapID, MMKVMode mode, string *cryptKey, MMKVPath_
     // sensitive zone
     {
         SCOPED_LOCK(m_sharedProcessLock);
+        //从磁盘加载文件
         loadFromFile();
     }
 }
@@ -146,6 +149,7 @@ MMKV *MMKV::defaultMMKV(MMKVMode mode, string *cryptKey) {
 }
 
 void initialize() {
+    //散列的字典，用于保存对一个的路径和对应的mmkv实例
     g_instanceDic = new unordered_map<string, MMKV *>;
     g_instanceLock = new ThreadLock();
     g_instanceLock->initialize();
@@ -182,11 +186,13 @@ void initialize() {
 ThreadOnceToken_t once_control = ThreadOnceUninitialized;
 
 void MMKV::initializeMMKV(const MMKVPath_t &rootDir, MMKVLogLevel logLevel) {
+    //将log等级赋值给全局变量
     g_currentLogLevel = logLevel;
 
     ThreadLock::ThreadOnce(&once_control, initialize);
 
     g_rootDir = rootDir;
+    //创建对应的文件夹
     mkPath(g_rootDir);
 
     MMKVInfo("root dir: " MMKV_PATH_FORMAT, g_rootDir.c_str());
@@ -198,9 +204,11 @@ MMKV *MMKV::mmkvWithID(const string &mmapID, MMKVMode mode, string *cryptKey, MM
     if (mmapID.empty()) {
         return nullptr;
     }
+    //加锁
     SCOPED_LOCK(g_instanceLock);
-
+    //id+rootpath生成对应的key值
     auto mmapKey = mmapedKVKey(mmapID, rootPath);
+    // 通过 mmapKey 在 map 中查找对应的 MMKV 对象并返回
     auto itr = g_instanceDic->find(mmapKey);
     if (itr != g_instanceDic->end()) {
         MMKV *kv = itr->second;
@@ -214,7 +222,7 @@ MMKV *MMKV::mmkvWithID(const string &mmapID, MMKVMode mode, string *cryptKey, MM
         }
         MMKVInfo("prepare to load %s (id %s) from rootPath %s", mmapID.c_str(), mmapKey.c_str(), rootPath->c_str());
     }
-
+    //map中找不到，创建新对象，返回
     auto kv = new MMKV(mmapID, mode, cryptKey, rootPath);
     kv->m_mmapKey = mmapKey;
     (*g_instanceDic)[mmapKey] = kv;
@@ -935,6 +943,7 @@ static MMKVPath_t encodeFilePath(const string &mmapID) {
 
 string mmapedKVKey(const string &mmapID, MMKVPath_t *rootPath) {
     if (rootPath && g_rootDir != (*rootPath)) {
+        //取对应的md5
         return md5(*rootPath + MMKV_PATH_SLASH + string2MMKVPath_t(mmapID));
     }
     return mmapID;
