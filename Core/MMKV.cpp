@@ -74,6 +74,7 @@ MMKV::MMKV(const std::string &mmapID, MMKVMode mode, string *cryptKey, MMKVPath_
     : m_mmapID(mmapID)
     //缓存路径，
     , m_path(mappedKVPathWithID(m_mmapID, mode, rootPath))
+    //校验文件存放路径
     , m_crcPath(crcPathWithID(m_mmapID, mode, rootPath))
     , m_dic(nullptr)
     , m_dicCrypt(nullptr)
@@ -81,6 +82,7 @@ MMKV::MMKV(const std::string &mmapID, MMKVMode mode, string *cryptKey, MMKVPath_
     , m_metaFile(new MemoryFile(m_crcPath))
     , m_metaInfo(new MMKVMetaInfo())
     , m_crypter(nullptr)
+    //线程锁
     , m_lock(new ThreadLock())
     , m_fileLock(new FileLock(m_metaFile->getFd()))
     , m_sharedProcessLock(new InterProcessLock(m_fileLock, SharedLockType))
@@ -142,12 +144,14 @@ MMKV::~MMKV() {
 
 MMKV *MMKV::defaultMMKV(MMKVMode mode, string *cryptKey) {
 #ifndef MMKV_ANDROID
+    //安卓使用的
     return mmkvWithID(DEFAULT_MMAP_ID, mode, cryptKey);
 #else
     return mmkvWithID(DEFAULT_MMAP_ID, DEFAULT_MMAP_SIZE, mode, cryptKey);
 #endif
 }
 
+//该方法只会执行一次，会初始化对应的数据信息
 void initialize() {
     //散列的字典，用于保存对一个的路径和对应的mmkv实例
     g_instanceDic = new unordered_map<string, MMKV *>;
@@ -188,7 +192,7 @@ ThreadOnceToken_t once_control = ThreadOnceUninitialized;
 void MMKV::initializeMMKV(const MMKVPath_t &rootDir, MMKVLogLevel logLevel) {
     //将log等级赋值给全局变量
     g_currentLogLevel = logLevel;
-
+    //线程方法,保证initialize方法只执行一次。多用于执行初始化方法
     ThreadLock::ThreadOnce(&once_control, initialize);
 
     g_rootDir = rootDir;
@@ -214,7 +218,6 @@ MMKV *MMKV::mmkvWithID(const string &mmapID, MMKVMode mode, string *cryptKey, MM
         MMKV *kv = itr->second;
         return kv;
     }
-
     if (rootPath) {
         MMKVPath_t specialPath = (*rootPath) + MMKV_PATH_SLASH + SPECIAL_CHARACTER_DIRECTORY_NAME;
         if (!isFileExist(specialPath)) {

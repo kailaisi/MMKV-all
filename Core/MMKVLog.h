@@ -32,7 +32,7 @@ void _MMKVLogWithLevel(
     MMKV_NAMESPACE_PREFIX::MMKVLogLevel level, const char *file, const char *func, int line, const char *format, ...);
 
 MMKV_NAMESPACE_BEGIN
-
+//声明对应的变量
 extern MMKVLogLevel g_currentLogLevel;
 extern mmkv::LogHandler g_logHandler;
 

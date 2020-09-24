@@ -60,6 +60,8 @@ void ThreadLock::unlock() {
 }
 
 void ThreadLock::ThreadOnce(ThreadOnceToken_t *onceToken, void (*callback)()) {
+    //在多线程环境中，有些事仅需要执行一次。该方法就是保证方法只执行一次。
+    //使用onceToken变量保证callback()函数在本进程执行序列中仅执行一次。
     pthread_once(onceToken, callback);
 }
 

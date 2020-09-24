@@ -203,7 +203,7 @@ bool isFileExist(const string &nsFilePath) {
 
 //创建文件夹
 extern bool mkPath(const MMKVPath_t &str) {
-    //路径
+    //拷贝一个备份出来
     char *path = strdup(str.c_str());
 
     struct stat sb = {};

@@ -28,7 +28,9 @@ import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.Log;
+
 import androidx.annotation.Nullable;
+
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.EnumMap;
@@ -43,6 +45,7 @@ public class MMKV implements SharedPreferences, SharedPreferences.Editor {
     private static EnumMap<MMKVLogLevel, Integer> logLevel2Index;
     private static MMKVLogLevel[] index2LogLevel;
     private static HashSet<Long> checkedHandleSet;
+
     static {
         recoverIndex = new EnumMap<>(MMKVRecoverStrategic.class);
         recoverIndex.put(MMKVRecoverStrategic.OnErrorDiscard, 0);
@@ -55,38 +58,50 @@ public class MMKV implements SharedPreferences, SharedPreferences.Editor {
         logLevel2Index.put(MMKVLogLevel.LevelError, 3);
         logLevel2Index.put(MMKVLogLevel.LevelNone, 4);
 
-        index2LogLevel = new MMKVLogLevel[] {MMKVLogLevel.LevelDebug, MMKVLogLevel.LevelInfo, MMKVLogLevel.LevelWarning,
-                                             MMKVLogLevel.LevelError, MMKVLogLevel.LevelNone};
+        index2LogLevel = new MMKVLogLevel[]{MMKVLogLevel.LevelDebug, MMKVLogLevel.LevelInfo, MMKVLogLevel.LevelWarning,
+                MMKVLogLevel.LevelError, MMKVLogLevel.LevelNone};
 
         checkedHandleSet = new HashSet<Long>();
     }
 
-    public interface LibLoader { void loadLibrary(String libName); }
+    public interface LibLoader {
+        void loadLibrary(String libName);
+    }
 
     // call on program start
+    //使用路径和log级别的初始化方法
     public static String initialize(Context context) {
+        //使用默认的路径+/mmkv
         String root = context.getFilesDir().getAbsolutePath() + "/mmkv";
         MMKVLogLevel logLevel = BuildConfig.DEBUG ? MMKVLogLevel.LevelDebug : MMKVLogLevel.LevelInfo;
         return initialize(root, null, logLevel);
     }
+
+    //设置了log的初始化方法
     public static String initialize(Context context, MMKVLogLevel logLevel) {
         String root = context.getFilesDir().getAbsolutePath() + "/mmkv";
         return initialize(root, null, logLevel);
     }
 
+    //设置文件保存路径的初始化方法
     public static String initialize(String rootDir) {
         MMKVLogLevel logLevel = BuildConfig.DEBUG ? MMKVLogLevel.LevelDebug : MMKVLogLevel.LevelInfo;
         return initialize(rootDir, null, logLevel);
     }
+
+    //设置了保存路径和日志级别
     public static String initialize(String rootDir, MMKVLogLevel logLevel) {
         return initialize(rootDir, null, logLevel);
     }
 
+    //设置了保存路径和
     public static String initialize(String rootDir, LibLoader loader) {
         MMKVLogLevel logLevel = BuildConfig.DEBUG ? MMKVLogLevel.LevelDebug : MMKVLogLevel.LevelInfo;
         return initialize(rootDir, loader, logLevel);
     }
+
     public static String initialize(String rootDir, LibLoader loader, MMKVLogLevel logLevel) {
+        //设置对应的加载器
         if (loader != null) {
             if (BuildConfig.FLAVOR.equals("SharedCpp")) {
                 loader.loadLibrary("c++_shared");
@@ -99,11 +114,13 @@ public class MMKV implements SharedPreferences, SharedPreferences.Editor {
             System.loadLibrary("mmkv");
         }
         MMKV.rootDir = rootDir;
+        //调用底层的jni方法进行初始化
         jniInitialize(MMKV.rootDir, logLevel2Int(logLevel));
         return rootDir;
     }
 
     static private String rootDir = null;
+
     public static String getRootDir() {
         return rootDir;
     }
@@ -235,7 +252,7 @@ public class MMKV implements SharedPreferences, SharedPreferences.Editor {
                     MMKV mmkv = parcelableMMKV.toMMKV();
                     if (mmkv != null) {
                         simpleLog(MMKVLogLevel.LevelInfo,
-                                  mmkv.mmapID() + " fd = " + mmkv.ashmemFD() + ", meta fd = " + mmkv.ashmemMetaFD());
+                                mmkv.mmapID() + " fd = " + mmkv.ashmemFD() + ", meta fd = " + mmkv.ashmemMetaFD());
                     }
                     return mmkv;
                 }
@@ -263,11 +280,12 @@ public class MMKV implements SharedPreferences, SharedPreferences.Editor {
         if (rootDir == null) {
             throw new IllegalStateException("You should Call MMKV.initialize() first.");
         }
-
+        //返回是MMKV对应的指针
         long handle = getDefaultMMKV(mode, cryptKey);
         return checkProcessMode(handle, "DefaultMMKV", mode);
     }
 
+    //检测对应的运行模式，如果使用的是single模式，但是当前有多个地方使用的情况下，会报错
     private static MMKV checkProcessMode(long handle, String mmapID, int mode) {
         if (handle == 0) {
             return null;
@@ -473,8 +491,8 @@ public class MMKV implements SharedPreferences, SharedPreferences.Editor {
                 return creator.createFromParcel(source);
             } else {
                 throw new Exception("Parcelable protocol requires a "
-                                    + "non-null static Parcelable.Creator object called "
-                                    + "CREATOR on class " + name);
+                        + "non-null static Parcelable.Creator object called "
+                        + "CREATOR on class " + name);
             }
         } catch (Exception e) {
             simpleLog(MMKVLogLevel.LevelError, e.toString());
@@ -585,7 +603,7 @@ public class MMKV implements SharedPreferences, SharedPreferences.Editor {
     @Override
     public Map<String, ?> getAll() {
         throw new java.lang.UnsupportedOperationException(
-            "use allKeys() instead, getAll() not implement because type-erasure inside mmkv");
+                "use allKeys() instead, getAll() not implement because type-erasure inside mmkv");
     }
 
     @Nullable
@@ -739,6 +757,7 @@ public class MMKV implements SharedPreferences, SharedPreferences.Editor {
     // callback handler
     private static MMKVHandler gCallbackHandler;
     private static boolean gWantLogReDirecting = false;
+
     public static void registerHandler(MMKVHandler handler) {
         gCallbackHandler = handler;
 
@@ -812,6 +831,7 @@ public class MMKV implements SharedPreferences, SharedPreferences.Editor {
     // content change notification of other process
     // trigger by getXXX() or setXXX() or checkContentChangedByOuterProcess()
     private static MMKVContentChangeNotification gContentChangeNotify;
+
     public static void registerContentChangeNotify(MMKVContentChangeNotification notify) {
         gContentChangeNotify = notify;
         setWantsContentChangeNotify(gContentChangeNotify != null);
@@ -821,11 +841,13 @@ public class MMKV implements SharedPreferences, SharedPreferences.Editor {
         gContentChangeNotify = null;
         setWantsContentChangeNotify(false);
     }
+
     private static void onContentChangedByOuterProcess(String mmapID) {
         if (gContentChangeNotify != null) {
             gContentChangeNotify.onContentChangedByOuterProcess(mmapID);
         }
     }
+
     private static native void setWantsContentChangeNotify(boolean needsNotify);
 
     // check change manually
@@ -839,6 +861,7 @@ public class MMKV implements SharedPreferences, SharedPreferences.Editor {
     }
 
     private static native void jniInitialize(String rootDir, int level);
+
     //加密密钥，是否相对路径。
     private native static long getMMKVWithID(String mmapID, int mode, String cryptKey, String rootPath);
 

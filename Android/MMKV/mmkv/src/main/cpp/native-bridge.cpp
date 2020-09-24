@@ -42,6 +42,7 @@ static JavaVM *g_currentJVM = nullptr;
 static int registerNativeMethods(JNIEnv *env, jclass cls);
 
 extern "C" JNIEXPORT JNICALL jint JNI_OnLoad(JavaVM *vm, void *reserved) {
+    //初始化一些全局变量。该方法会在加载so文件的时候调用
     g_currentJVM = vm;
     JNIEnv *env;
     if (vm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6) != JNI_OK) {
@@ -62,6 +63,7 @@ extern "C" JNIEXPORT JNICALL jint JNI_OnLoad(JavaVM *vm, void *reserved) {
         MMKVError("fail to create global reference for %s", clsName);
         return -3;
     }
+    //动态注册对应的方法
     int ret = registerNativeMethods(env, g_cls);
     if (ret != 0) {
         MMKVError("fail to register native methods for class %s, ret = %d", clsName, ret);
@@ -114,15 +116,17 @@ extern "C" JNIEXPORT JNICALL jint JNI_OnLoad(JavaVM *vm, void *reserved) {
 
 namespace mmkv {
 
+//对应的MMKV的JNI初始化方法
 MMKV_JNI void jniInitialize(JNIEnv *env, jobject obj, jstring rootDir, jint logLevel) {
     if (!rootDir) {
         return;
     }
-    //
+    //将java的string类型，转化为对应的c++所使用的字符数组
     const char *kstr = env->GetStringUTFChars(rootDir, nullptr);
     if (kstr) {
         //调用initializeMMKV方法
         MMKV::initializeMMKV(kstr, (MMKVLogLevel) logLevel);
+        //释放申请的字符数组资源
         env->ReleaseStringUTFChars(rootDir, kstr);
     }
 }
@@ -283,12 +287,14 @@ MMKV_JNI jlong getMMKVWithIDAndSize(JNIEnv *env, jobject obj, jstring mmapID, ji
     return (jlong) kv;
 }
 
+//获取MMKV所对应的文件符
 MMKV_JNI jlong getDefaultMMKV(JNIEnv *env, jobject obj, jint mode, jstring cryptKey) {
     MMKV *kv = nullptr;
-
+    //使用加密密钥
     if (cryptKey) {
         string crypt = jstring2string(env, cryptKey);
         if (crypt.length() > 0) {
+            //获取对应的文件符
             kv = MMKV::defaultMMKV((MMKVMode) mode, &crypt);
         }
     }
@@ -442,13 +448,16 @@ MMKV_JNI jdouble decodeDouble(JNIEnv *env, jobject, jlong handle, jstring oKey, 
 }
 
 MMKV_JNI jboolean encodeString(JNIEnv *env, jobject, jlong handle, jstring oKey, jstring oValue) {
+    //handle是MMKV的指针
     MMKV *kv = reinterpret_cast<MMKV *>(handle);
     if (kv && oKey) {
+        //创建key
         string key = jstring2string(env, oKey);
         if (oValue) {
             string value = jstring2string(env, oValue);
             return (jboolean) kv->set(value, key);
         } else {
+            //如果value是空的话，则移除对应的key
             kv->removeValueForKey(key);
             return (jboolean) true;
         }
