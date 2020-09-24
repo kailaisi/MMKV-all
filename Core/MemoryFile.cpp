@@ -41,7 +41,10 @@ static bool getFileSize(int fd, size_t &size);
 #    ifdef MMKV_ANDROID
 extern size_t ASharedMemory_getSize(int fd);
 #    else
+
+//构造函数，需要传入对应的路径名称
 MemoryFile::MemoryFile(const MMKVPath_t &path) : m_name(path), m_fd(-1), m_ptr(nullptr), m_size(0) {
+    //去加载文件
     reloadFromFile();
 }
 #    endif // MMKV_ANDROID
@@ -50,6 +53,7 @@ MemoryFile::MemoryFile(const MMKVPath_t &path) : m_name(path), m_fd(-1), m_ptr(n
 void tryResetFileProtection(const string &path);
 #    endif
 
+//进行扩容
 bool MemoryFile::truncate(size_t size) {
     if (m_fd < 0) {
         return false;
@@ -76,11 +80,13 @@ bool MemoryFile::truncate(size_t size) {
     }
 
     if (::ftruncate(m_fd, static_cast<off_t>(m_size)) != 0) {
+        //扩容失败，恢复原来的大小
         MMKVError("fail to truncate [%s] to size %zu, %s", m_name.c_str(), m_size, strerror(errno));
         m_size = oldSize;
         return false;
     }
     if (m_size > oldSize) {
+        //需要扩容，那么将oldSize之后的数据填充0
         if (!zeroFillFile(m_fd, oldSize, m_size - oldSize)) {
             MMKVError("fail to zeroFile [%s] to size %zu, %s", m_name.c_str(), m_size, strerror(errno));
             m_size = oldSize;
@@ -88,11 +94,15 @@ bool MemoryFile::truncate(size_t size) {
         }
     }
 
+    //之前的流程只是对使用的结构体进行了扩容，但是对于其绑定的虚拟内存并没有进行扩容。
+    //所以这里需要先unmap解绑映射，然后再通过mmap，将扩容后的大小数据进行映射
     if (m_ptr) {
+        //先unmape
         if (munmap(m_ptr, oldSize) != 0) {
             MMKVError("fail to munmap [%s], %s", m_name.c_str(), strerror(errno));
         }
     }
+    //再重新mmap
     auto ret = mmap();
     if (!ret) {
         doCleanMemoryCache(true);
@@ -111,7 +121,10 @@ bool MemoryFile::msync(SyncFlag syncFlag) {
     return false;
 }
 
+//进行内存映射
 bool MemoryFile::mmap() {
+    //在初始映射的时候m_ptr是空，会使用分配的地址。如果已经映射过，这里的m_ptr会使用我们原来的地址信息。不会造成
+    //映射的地址内存的数据丢失
     m_ptr = (char *) ::mmap(m_ptr, m_size, PROT_READ | PROT_WRITE, MAP_SHARED, m_fd, 0);
     if (m_ptr == MAP_FAILED) {
         MMKVError("fail to mmap [%s], %s", m_name.c_str(), strerror(errno));
@@ -133,21 +146,25 @@ void MemoryFile::reloadFromFile() {
         MMKV_ASSERT(0);
         clearMemoryCache();
     }
-
+    //打开文件
     m_fd = open(m_name.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, S_IRWXU);
     if (m_fd < 0) {
+        //打开失败
         MMKVError("fail to open:%s, %s", m_name.c_str(), strerror(errno));
     } else {
         FileLock fileLock(m_fd);
         InterProcessLock lock(&fileLock, ExclusiveLockType);
         SCOPED_LOCK(&lock);
-
+        //获取m_fd文件的大小，放入到m_size中
         mmkv::getFileSize(m_fd, m_size);
         // round up to (n * pagesize)
+
         if (m_size < DEFAULT_MMAP_SIZE || (m_size % DEFAULT_MMAP_SIZE != 0)) {
+            //将m_size 扩容到4k的整数倍大小
             size_t roundSize = ((m_size / DEFAULT_MMAP_SIZE) + 1) * DEFAULT_MMAP_SIZE;
             truncate(roundSize);
         } else {
+            //是整数倍大小的话，直接进行映射
             auto ret = mmap();
             if (!ret) {
                 doCleanMemoryCache(true);

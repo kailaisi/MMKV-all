@@ -175,6 +175,7 @@ public:
     // if you want a per-user mmkv, you could merge user-id within mmapID
     // cryptKey: 16 bytes at most
     static MMKV *mmkvWithID(const std::string &mmapID,
+                            //使用默认的mmap的页大小
                             int size = mmkv::DEFAULT_MMAP_SIZE,
                             MMKVMode mode = MMKV_SINGLE_PROCESS,
                             std::string *cryptKey = nullptr,

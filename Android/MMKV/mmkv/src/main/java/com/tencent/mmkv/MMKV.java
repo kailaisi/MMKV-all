@@ -171,7 +171,7 @@ public class MMKV implements SharedPreferences, SharedPreferences.Editor {
         if (rootDir == null) {
             throw new IllegalStateException("You should Call MMKV.initialize() first.");
         }
-
+        //
         long handle = getMMKVWithID(mmapID, SINGLE_PROCESS_MODE, null, null);
         return checkProcessMode(handle, mmapID, SINGLE_PROCESS_MODE);
     }

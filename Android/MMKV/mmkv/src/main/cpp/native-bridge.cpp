@@ -358,9 +358,12 @@ MMKV_JNI jboolean checkProcessMode(JNIEnv *env, jobject, jlong handle) {
 }
 
 MMKV_JNI jboolean encodeBool(JNIEnv *env, jobject, jlong handle, jstring oKey, jboolean value) {
+    //handle是MMKV对应的指针
     MMKV *kv = reinterpret_cast<MMKV *>(handle);
     if (kv && oKey) {
+        //获取对应的k值
         string key = jstring2string(env, oKey);
+        //调用kv的set方法
         return (jboolean) kv->set((bool) value, key);
     }
     return (jboolean) false;
