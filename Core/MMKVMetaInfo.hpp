@@ -29,26 +29,31 @@
 namespace mmkv {
 
 enum MMKVVersion : uint32_t {
+    //默认状态
     MMKVVersionDefault = 0,
 
+    //记录完整的写入次数
     // record full write back count
     MMKVVersionSequence = 1,
 
     // store random iv for encryption
+    //对随机数据进行加密存储
     MMKVVersionRandomIV = 2,
 
     // store actual size together with crc checksum, try to reduce file corruption
+    //保存实际的crc和存储所占用的大小。
     MMKVVersionActualSize = 3,
 };
 
 struct MMKVMetaInfo {
-    uint32_t m_crcDigest = 0;
-    uint32_t m_version = MMKVVersionSequence;
+    uint32_t m_crcDigest = 0;//crc校验位
+    uint32_t m_version = MMKVVersionSequence;//MMKV当前的状态。枚举类型MMKVVersion
     uint32_t m_sequence = 0; // full write-back count
-    uint8_t m_vector[AES_KEY_LEN] = {};
-    uint32_t m_actualSize = 0;
+    uint8_t m_vector[AES_KEY_LEN] = {};//aes加密密钥
+    uint32_t m_actualSize = 0;//实际大小
 
     // confirmed info: it's been synced to file
+    //已经同步到文件的数据
     struct {
         uint32_t lastActualSize = 0;
         uint32_t lastCRCDigest = 0;

@@ -461,11 +461,14 @@ bool MMKV::set(uint64_t value, MMKVKey_t key) {
     if (isKeyEmpty(key)) {
         return false;
     }
+    //获取value值的大小
     size_t size = pbUInt64Size(value);
     MMBuffer data(size);
+    //
     CodedOutputData output(data.getPtr(), size);
+    //写入到output中
     output.writeUInt64(value);
-
+    //保存数据
     return setDataForKey(move(data), key);
 }
 

@@ -125,6 +125,7 @@ void CodedOutputData::writeRawData(const MMBuffer &data) {
                    ", m_size: " + to_string(m_size);
         throw out_of_range(msg);
     }
+    //当data中的数据，写入到对应的映射的内存中
     memcpy(m_ptr + m_position, data.getPtr(), numberOfBytes);
     m_position += numberOfBytes;
 }

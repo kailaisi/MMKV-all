@@ -56,24 +56,29 @@ constexpr uint32_t Fixed32Size = pbFixed32Size();
 
 MMKV_NAMESPACE_BEGIN
 
+//从文件加载数据到MMKV
 void MMKV::loadFromFile() {
     if (m_metaFile->isFileValid()) {
+        //1.   从m_metaFile中读取对应的MMKV的配置信息
         m_metaInfo->read(m_metaFile->getMemory());
     }
 #ifndef MMKV_DISABLE_CRYPT
     if (m_crypter) {
         if (m_metaInfo->m_version >= MMKVVersionRandomIV) {
+            //2.   进行aes加密进行初始化
             m_crypter->resetIV(m_metaInfo->m_vector, sizeof(m_metaInfo->m_vector));
         }
     }
 #endif
-    if (!m_file->isFileValid()) {
+    if (!m_file->isFileValid()) {//3.  有问题，重新读取文件
         m_file->reloadFromFile();
     }
     if (!m_file->isFileValid()) {
         MMKVError("file [%s] not valid", m_path.c_str());
     } else {
         // error checking
+        //loadFromFile记录是否从m_file中正常读取数据。
+        //needFullWriteback  记录是否需要全部写入磁盘
         bool loadFromFile = false, needFullWriteback = false;
         checkDataValid(loadFromFile, needFullWriteback);
         MMKVInfo("loading [%s] with %zu actual size, file size %zu, InterProcess %d, meta info "
@@ -85,6 +90,7 @@ void MMKV::loadFromFile() {
             MMKVInfo("loading [%s] with crc %u sequence %u version %u", m_mmapID.c_str(), m_metaInfo->m_crcDigest,
                      m_metaInfo->m_sequence, m_metaInfo->m_version);
             MMBuffer inputBuffer(ptr + Fixed32Size, m_actualSize, MMBufferNoCopy);
+            //先清空数据，然后从内存文件中读取
             if (m_crypter) {
                 clearDictionary(m_dicCrypt);
             } else {
@@ -217,7 +223,7 @@ void MMKV::checkDataValid(bool &loadFromFile, bool &needFullWriteback) {
             }
         }
     };
-
+    //读取m_file中记录的实际存储的数据长度
     m_actualSize = readActualSize();
 
     if (m_actualSize < fileSize && (m_actualSize + Fixed32Size) <= fileSize) {
@@ -256,7 +262,7 @@ void MMKV::checkDataValid(bool &loadFromFile, bool &needFullWriteback) {
 void MMKV::checkLoadData() {
     if (m_needLoadFromFile) {
         SCOPED_LOCK(m_sharedProcessLock);
-
+        //重新读取一次数据
         m_needLoadFromFile = false;
         loadFromFile();
         return;
@@ -499,6 +505,7 @@ bool MMKV::setDataForKey(MMBuffer &&data, MMKVKey_t key, bool isDataHolder) {
     }
     SCOPED_LOCK(m_lock);
     SCOPED_LOCK(m_exclusiveProcessLock);
+    //检测已经保存的数据
     checkLoadData();
 
 #ifndef MMKV_DISABLE_CRYPT
